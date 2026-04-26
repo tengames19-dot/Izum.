@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<title>Class Chaos</title>
+
+<style>
+body {
+  margin: 0;
+  background: #1f1f1f;
+  color: white;
+  font-family: sans-serif;
+  text-align: center;
+}
+
+#score {
+  font-size: 22px;
+  margin: 10px;
+}
+
+#game {
+  position: relative;
+  width: 100%;
+  height: 70vh;
+  overflow: hidden;
+}
+
+#board {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%,-50%);
+  width: 95%;
+  height: 95%;
+  background: url("bs.png") center/cover no-repeat;
+}
+
+#teacher {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 80px;
+}
+
+.projectile {
+  position: absolute;
+  width: 45px;
+}
+
+/* UI */
+#ui {
+  position: fixed;
+  bottom: 10px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+#items {
+  display: flex;
+  gap: 10px;
+}
+
+.itemBtn {
+  padding: 8px;
+  font-size: 18px;
+}
+
+button.throw {
+  padding: 10px 20px;
+  font-size: 18px;
+}
+
+#arrow {
+  font-size: 22px;
+  position: absolute;
+  bottom: 120px;
+}
+</style>
+</head>
+
+<body>
+
+<div id="score">Очки: 0</div>
+
+<div id="game">
+  <div id="board">
+    <img id="teacher" src="izum.png">
+  </div>
+
+  <div id="ui">
+
+    <div id="items">
+  <button class="itemBtn" onclick="selectItem('kabluk.png')">👠</button>
+  <button class="itemBtn" onclick="selectItem('dild.png')">🍆</button>
+  <button class="itemBtn" onclick="selectItem('iz.png')">⭐</button>
+</div>
+
+    <button class="throw" onclick="throwItem()">Кинути</button>
+
+    <div id="arrow">▲</div>
+
+  </div>
+</div>
+
+<script>
+let score = 0;
+let canThrow = true;
+let selectedItem = "kabluk.png";
+
+const teacher = document.getElementById("teacher");
+const board = document.getElementById("board");
+const game = document.getElementById("game");
+
+let phaseLock = false;
+let gameEnded = false;
+
+/* SCORE */
+function updateScore() {
+  document.getElementById("score").innerText = "Очки: " + score;
+}
+
+/* ITEM */
+function selectItem(img) {
+  selectedItem = img;
+}
+
+/* MOVE */
+let x = 0;
+let dir = 2;
+let hitLock = false;
+
+setInterval(() => {
+  if (gameEnded) return;
+
+  const w = board.clientWidth;
+
+  x += dir;
+
+  if (x > w - 80) dir = -2;
+  if (x < 0) dir = 2;
+
+  if (!hitLock && !phaseLock) {
+    teacher.src = (dir > 0) ? "izum.png" : "izumzad.png";
+  }
+
+  teacher.style.left = x + "px";
+
+}, 20);
+
+/* HIT FLASH (0.2s) */
+function flashHit() {
+  if (phaseLock) return;
+
+  hitLock = true;
+  teacher.src = "izumzlo.png";
+
+  setTimeout(() => {
+    hitLock = false;
+  }, 200);
+}
+
+/* PHASE 300 */
+function firePhase() {
+  phaseLock = true;
+  teacher.src = "izumvogon.png";
+
+  setTimeout(() => {
+    phaseLock = false;
+  }, 2000);
+}
+
+/* WIN 1000 */
+function winGame() {
+  gameEnded = true;
+  phaseLock = true;
+  teacher.src = "peremoga.png";
+
+  alert("Перемога!");
+}
+
+/* ARROW */
+let arrow = document.getElementById("arrow");
+let arrowPos = 0;
+let arrowDir = 3;
+
+setInterval(() => {
+  const w = game.clientWidth;
+
+  arrowPos += arrowDir;
+
+  if (arrowPos > w - 30) arrowDir = -3;
+  if (arrowPos < 0) arrowDir = 3;
+
+  arrow.style.left = arrowPos + "px";
+}, 10);
+
+/* THROW */
+function throwItem() {
+  if (!canThrow || gameEnded) return;
+  canThrow = false;
+
+  const obj = document.createElement("img");
+  obj.src = selectedItem;
+  obj.className = "projectile";
+
+  let px = arrowPos;
+  let py = game.clientHeight - 80;
+
+  obj.style.left = px + "px";
+  obj.style.top = py + "px";
+
+  board.appendChild(obj);
+
+  let target = x;
+
+  let move = setInterval(() => {
+    px += (target - px) / 10;
+    py -= 10;
+
+    obj.style.left = px + "px";
+    obj.style.top = py + "px";
+
+    const t = teacher.getBoundingClientRect();
+    const o = obj.getBoundingClientRect();
+
+    if (
+      o.right > t.left &&
+      o.left < t.right &&
+      o.bottom > t.top &&
+      o.top < t.bottom
+    ) {
+
+      score += 10;
+      updateScore();
+
+      obj.remove();
+      clearInterval(move);
+
+      flashHit();
+
+      // 🔥 300 ФАЗА
+      if (score >= 300 && score < 1000 && score % 300 === 0) {
+        firePhase();
+      }
+
+      // 🏆 WIN
+      if (score >= 1000 && !gameEnded) {
+        winGame();
+      }
+    }
+
+    if (py < 0) {
+      obj.remove();
+      clearInterval(move);
+    }
+
+  }, 30);
+
+  setTimeout(() => canThrow = true, 250);
+}
+</script>
+
+</body>
+</html>
